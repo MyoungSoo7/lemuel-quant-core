@@ -24,7 +24,11 @@ int main() {
     }
 
     dart::DartClient client(key);
-    auto store = dart::DisclosureStore::make_in_memory();
+    std::unique_ptr<dart::DisclosureStore> store;
+    if (const char* dsn = std::getenv("LQC_PG_DSN"); dsn && *dsn) {
+        store = dart::DisclosureStore::make_postgres(dsn);
+    }
+    if (!store) store = dart::DisclosureStore::make_in_memory();
 
     client.poll_loop(
         std::chrono::seconds(60),

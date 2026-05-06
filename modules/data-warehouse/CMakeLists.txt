@@ -8,13 +8,21 @@ add_executable(data_warehouse
 target_include_directories(data_warehouse PRIVATE include)
 target_link_libraries(data_warehouse PRIVATE lqc_shared)
 
-# Apache Arrow / Parquet — optional. Without it, parquet_writer ships
-# a CSV fallback so the binary still builds in a minimal env.
+# Apache Arrow / Parquet — required when this module is enabled.
+# Without it, parquet_writer falls back to CSV (kept for CI builds without arrow).
 find_package(Arrow CONFIG QUIET)
 find_package(Parquet CONFIG QUIET)
 if(Arrow_FOUND AND Parquet_FOUND)
-    target_link_libraries(data_warehouse PRIVATE Arrow::arrow_shared
-                                                  Parquet::parquet_shared)
+    if(TARGET Arrow::arrow_shared)
+        target_link_libraries(data_warehouse PRIVATE Arrow::arrow_shared)
+    elseif(TARGET arrow_shared)
+        target_link_libraries(data_warehouse PRIVATE arrow_shared)
+    endif()
+    if(TARGET Parquet::parquet_shared)
+        target_link_libraries(data_warehouse PRIVATE Parquet::parquet_shared)
+    elseif(TARGET parquet_shared)
+        target_link_libraries(data_warehouse PRIVATE parquet_shared)
+    endif()
     target_compile_definitions(data_warehouse PRIVATE LQC_HAS_PARQUET=1)
 endif()
 

@@ -22,7 +22,10 @@ public:
     virtual std::vector<Disclosure> recent(int limit = 50) = 0;
 
     static std::unique_ptr<DisclosureStore> make_in_memory();
-    // static std::unique_ptr<DisclosureStore> make_postgres(const std::string& dsn);
+    // dsn 예: "postgres://lqc:pw@127.0.0.1:5432/lqc"
+    // libpqxx 미링크 시 nullptr 반환.
+    static std::unique_ptr<DisclosureStore> make_postgres(
+        const std::string& dsn);
 };
 
 }  // namespace dart

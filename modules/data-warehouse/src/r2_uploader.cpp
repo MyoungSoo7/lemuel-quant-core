@@ -3,7 +3,10 @@
 #include <iostream>
 
 #ifdef LQC_HAS_AWS_S3
+#include <fstream>
 #include <aws/core/Aws.h>
+#include <aws/core/auth/AWSCredentialsProvider.h>
+#include <aws/core/utils/memory/stl/AWSStringStream.h>
 #include <aws/s3/S3Client.h>
 #include <aws/s3/model/PutObjectRequest.h>
 #endif
@@ -18,16 +21,23 @@ std::string R2Uploader::upload(const std::filesystem::path& local,
     Aws::SDKOptions opts;
     Aws::InitAPI(opts);
     Aws::Client::ClientConfiguration ccfg;
-    ccfg.endpointOverride = cfg_.endpoint;
-    ccfg.region           = cfg_.region;
-    Aws::Auth::AWSCredentials creds(cfg_.access_key, cfg_.secret_key);
-    Aws::S3::S3Client s3(creds, ccfg);
+    ccfg.endpointOverride = cfg_.endpoint.c_str();
+    ccfg.region           = cfg_.region.c_str();
+    Aws::Auth::AWSCredentials creds(cfg_.access_key.c_str(),
+                                     cfg_.secret_key.c_str());
+    auto creds_provider =
+        Aws::MakeShared<Aws::Auth::SimpleAWSCredentialsProvider>("lqc", creds);
+    Aws::S3::S3Client s3(
+        creds_provider, /*endpointProvider*/ nullptr, ccfg);
 
     Aws::S3::Model::PutObjectRequest req;
-    req.WithBucket(cfg_.bucket).WithKey(key_hint);
-    auto data = Aws::MakeShared<Aws::FStream>(
-        "lqc", local.c_str(), std::ios_base::in | std::ios_base::binary);
-    req.SetBody(data);
+    req.WithBucket(cfg_.bucket.c_str()).WithKey(key_hint.c_str());
+    auto body = Aws::MakeShared<Aws::StringStream>("lqc");
+    {
+        std::ifstream src(local, std::ios_base::in | std::ios_base::binary);
+        (*body) << src.rdbuf();
+    }
+    req.SetBody(body);
 
     const auto resp = s3.PutObject(req);
     Aws::ShutdownAPI(opts);

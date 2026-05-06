@@ -9,26 +9,26 @@
 #include "judge.grpc.pb.h"
 #include "judge/runner.hpp"
 
-namespace pb = lqc::judge::v1;
+namespace lqcv1 = lqc::judge::v1;
 
 namespace {
 
-pb::Verdict to_pb(judge::Verdict v) {
+lqcv1::Verdict to_pb(judge::Verdict v) {
     using enum judge::Verdict;
     switch (v) {
-        case Accepted:            return pb::AC;
-        case WrongAnswer:         return pb::WA;
-        case TimeLimitExceeded:   return pb::TLE;
-        case MemoryLimitExceeded: return pb::MLE;
-        case OutputLimitExceeded: return pb::OLE;
-        case RuntimeError:        return pb::RE;
-        case CompileError:        return pb::CE;
-        case InternalError:       return pb::IE;
+        case Accepted:            return lqcv1::AC;
+        case WrongAnswer:         return lqcv1::WA;
+        case TimeLimitExceeded:   return lqcv1::TLE;
+        case MemoryLimitExceeded: return lqcv1::MLE;
+        case OutputLimitExceeded: return lqcv1::OLE;
+        case RuntimeError:        return lqcv1::RE;
+        case CompileError:        return lqcv1::CE;
+        case InternalError:       return lqcv1::IE;
     }
-    return pb::UNKNOWN;
+    return lqcv1::UNKNOWN;
 }
 
-judge::Submission from_pb(const pb::SubmitRequest& req) {
+judge::Submission from_pb(const lqcv1::SubmitRequest& req) {
     judge::Submission s;
     s.source = std::string(req.source().begin(), req.source().end());
     s.language = req.language().empty() ? "cpp" : req.language();
@@ -54,21 +54,21 @@ judge::Submission from_pb(const pb::SubmitRequest& req) {
     return s;
 }
 
-void fill_case(pb::CaseResult* out, const judge::CaseResult& in) {
+void fill_case(lqcv1::CaseResult* out, const judge::CaseResult& in) {
     out->set_verdict(to_pb(in.verdict));
     out->set_wall_time_ms(static_cast<std::uint32_t>(in.wall_time_used.count()));
     out->set_memory_bytes(in.memory_used);
     out->set_actual_output(in.actual_output);
 }
 
-class JudgeService final : public pb::Judge::Service {
+class JudgeService final : public lqcv1::Judge::Service {
 public:
     explicit JudgeService(std::filesystem::path workdir)
         : runner_(std::move(workdir)) {}
 
     grpc::Status Submit(grpc::ServerContext*,
-                        const pb::SubmitRequest* req,
-                        pb::SubmitResponse* resp) override {
+                        const lqcv1::SubmitRequest* req,
+                        lqcv1::SubmitResponse* resp) override {
         const auto r = runner_.judge(from_pb(*req));
         resp->set_overall(to_pb(r.overall));
         resp->set_compile_log(r.compile_log);
@@ -77,11 +77,11 @@ public:
     }
 
     grpc::Status Stream(grpc::ServerContext*,
-                        const pb::SubmitRequest* req,
-                        grpc::ServerWriter<pb::CaseUpdate>* writer) override {
+                        const lqcv1::SubmitRequest* req,
+                        grpc::ServerWriter<lqcv1::CaseUpdate>* writer) override {
         const auto r = runner_.judge(from_pb(*req));
         for (std::size_t i = 0; i < r.per_case.size(); ++i) {
-            pb::CaseUpdate u;
+            lqcv1::CaseUpdate u;
             u.set_case_index(static_cast<std::uint32_t>(i));
             fill_case(u.mutable_result(), r.per_case[i]);
             u.set_is_last(i + 1 == r.per_case.size());
