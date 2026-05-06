@@ -85,17 +85,44 @@ bool install_seccomp_whitelist() {
     auto ctx = seccomp_init(SCMP_ACT_KILL_PROCESS);
     if (!ctx) return false;
 
+    // Expanded for glibc 2.35+ (Ubuntu 22.04+ / 24.04). Modern glibc startup
+    // performs clone3 + rseq + getrlimit, and inlines many fstatat/openat
+    // calls under exec — keep the list permissive enough that compiled
+    // C/C++ binaries run, but still block network/filesystem mutation.
     static const int allow[] = {
-        SCMP_SYS(read),       SCMP_SYS(write),     SCMP_SYS(exit),
-        SCMP_SYS(exit_group), SCMP_SYS(brk),       SCMP_SYS(mmap),
-        SCMP_SYS(munmap),     SCMP_SYS(mprotect),  SCMP_SYS(rt_sigaction),
-        SCMP_SYS(rt_sigreturn), SCMP_SYS(rt_sigprocmask),
-        SCMP_SYS(fstat),      SCMP_SYS(lseek),     SCMP_SYS(ioctl),
-        SCMP_SYS(uname),      SCMP_SYS(arch_prctl), SCMP_SYS(set_tid_address),
-        SCMP_SYS(set_robust_list), SCMP_SYS(prlimit64), SCMP_SYS(getrandom),
-        SCMP_SYS(readv),      SCMP_SYS(writev),    SCMP_SYS(close),
-        SCMP_SYS(futex),      SCMP_SYS(clock_gettime), SCMP_SYS(gettimeofday),
-        SCMP_SYS(nanosleep),  SCMP_SYS(getpid),    SCMP_SYS(gettid),
+        // I/O
+        SCMP_SYS(read),      SCMP_SYS(write),    SCMP_SYS(readv),
+        SCMP_SYS(writev),    SCMP_SYS(close),    SCMP_SYS(lseek),
+        SCMP_SYS(pread64),   SCMP_SYS(pwrite64),
+        SCMP_SYS(openat),    SCMP_SYS(open),     SCMP_SYS(dup),
+        SCMP_SYS(dup2),      SCMP_SYS(dup3),     SCMP_SYS(pipe),
+        SCMP_SYS(pipe2),     SCMP_SYS(fcntl),    SCMP_SYS(ioctl),
+        // Memory
+        SCMP_SYS(brk),       SCMP_SYS(mmap),     SCMP_SYS(munmap),
+        SCMP_SYS(mremap),    SCMP_SYS(mprotect), SCMP_SYS(madvise),
+        // Process / thread (compiled binary may use threads via libstdc++)
+        SCMP_SYS(exit),      SCMP_SYS(exit_group),
+        SCMP_SYS(getpid),    SCMP_SYS(gettid),   SCMP_SYS(tgkill),
+        SCMP_SYS(clone),     SCMP_SYS(clone3),   SCMP_SYS(rseq),
+        SCMP_SYS(set_tid_address), SCMP_SYS(set_robust_list),
+        SCMP_SYS(arch_prctl), SCMP_SYS(prctl),
+        SCMP_SYS(getrlimit), SCMP_SYS(setrlimit), SCMP_SYS(prlimit64),
+        SCMP_SYS(uname),
+        // Signals
+        SCMP_SYS(rt_sigaction),  SCMP_SYS(rt_sigreturn),
+        SCMP_SYS(rt_sigprocmask),SCMP_SYS(rt_sigpending),
+        SCMP_SYS(sigaltstack),
+        // Time / random
+        SCMP_SYS(clock_gettime), SCMP_SYS(clock_nanosleep),
+        SCMP_SYS(gettimeofday),  SCMP_SYS(nanosleep),
+        SCMP_SYS(getrandom),
+        // Stat (read-only)
+        SCMP_SYS(fstat),     SCMP_SYS(newfstatat), SCMP_SYS(statx),
+        SCMP_SYS(stat),      SCMP_SYS(lstat),
+        SCMP_SYS(getdents64),
+        // Sync
+        SCMP_SYS(futex),     SCMP_SYS(futex_waitv),
+        SCMP_SYS(membarrier),
     };
     for (int sc : allow) {
         if (seccomp_rule_add(ctx, SCMP_ACT_ALLOW, sc, 0) < 0) {
