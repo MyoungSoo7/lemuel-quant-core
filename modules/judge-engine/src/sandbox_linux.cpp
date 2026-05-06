@@ -93,13 +93,20 @@ bool install_seccomp_whitelist() {
     // calls under exec — keep the list permissive enough that compiled
     // C/C++ binaries run, but still block network/filesystem mutation.
     static const int allow[] = {
+        // execve is needed to actually launch the user binary (parent
+        // installs the filter before calling execve itself). After exec,
+        // user code generally doesn't need it again, but allow execveat
+        // for static-pie / libc style entry.
+        SCMP_SYS(execve),    SCMP_SYS(execveat),
         // I/O
         SCMP_SYS(read),      SCMP_SYS(write),    SCMP_SYS(readv),
         SCMP_SYS(writev),    SCMP_SYS(close),    SCMP_SYS(lseek),
         SCMP_SYS(pread64),   SCMP_SYS(pwrite64),
-        SCMP_SYS(openat),    SCMP_SYS(open),     SCMP_SYS(dup),
-        SCMP_SYS(dup2),      SCMP_SYS(dup3),     SCMP_SYS(pipe),
-        SCMP_SYS(pipe2),     SCMP_SYS(fcntl),    SCMP_SYS(ioctl),
+        SCMP_SYS(openat),    SCMP_SYS(open),     SCMP_SYS(access),
+        SCMP_SYS(faccessat), SCMP_SYS(faccessat2),
+        SCMP_SYS(dup),       SCMP_SYS(dup2),     SCMP_SYS(dup3),
+        SCMP_SYS(pipe),      SCMP_SYS(pipe2),    SCMP_SYS(fcntl),
+        SCMP_SYS(ioctl),
         // Memory
         SCMP_SYS(brk),       SCMP_SYS(mmap),     SCMP_SYS(munmap),
         SCMP_SYS(mremap),    SCMP_SYS(mprotect), SCMP_SYS(madvise),
