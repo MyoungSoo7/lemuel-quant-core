@@ -11,7 +11,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD="$ROOT/build"
 INSTALL_BIN="${LQC_INSTALL_BIN:-/opt/lqc/bin}"
 
-declare -A MODULE_FLAGS=(
+declare -A MODULE_ON=(
     [judge_engine]="-DLQC_BUILD_JUDGE_ENGINE=ON -DLQC_JUDGE_GRPC=ON"
     [market_feed]="-DLQC_BUILD_MARKET_FEED=ON"
     [stock_feed]="-DLQC_BUILD_STOCK_FEED=ON"
@@ -19,16 +19,36 @@ declare -A MODULE_FLAGS=(
     [news_pipeline]="-DLQC_BUILD_NEWS_PIPELINE=ON"
     [data_warehouse]="-DLQC_BUILD_DATA_WAREHOUSE=ON"
 )
+declare -A MODULE_OFF=(
+    [judge_engine]="-DLQC_BUILD_JUDGE_ENGINE=OFF"
+    [market_feed]="-DLQC_BUILD_MARKET_FEED=OFF"
+    [stock_feed]="-DLQC_BUILD_STOCK_FEED=OFF"
+    [dart_crawler]="-DLQC_BUILD_DART_CRAWLER=OFF"
+    [news_pipeline]="-DLQC_BUILD_NEWS_PIPELINE=OFF"
+    [data_warehouse]="-DLQC_BUILD_DATA_WAREHOUSE=OFF"
+)
 
 if [[ -z "${LQC_MODULES:-}" ]]; then
-    LQC_MODULES="${!MODULE_FLAGS[@]}"
+    LQC_MODULES="${!MODULE_ON[@]}"
 fi
+
+# Build a set of selected modules for set-difference.
+declare -A SELECTED
+for m in $LQC_MODULES; do SELECTED[$m]=1; done
 
 CMAKE_FLAGS=(-DCMAKE_BUILD_TYPE=Release)
 for m in $LQC_MODULES; do
-    [[ -n "${MODULE_FLAGS[$m]:-}" ]] || { echo "unknown module: $m"; exit 1; }
+    [[ -n "${MODULE_ON[$m]:-}" ]] || { echo "unknown module: $m"; exit 1; }
     # shellcheck disable=SC2206
-    CMAKE_FLAGS+=(${MODULE_FLAGS[$m]})
+    CMAKE_FLAGS+=(${MODULE_ON[$m]})
+done
+# Explicitly OFF for unselected modules so the CMakeLists defaults don't
+# pull them into the build.
+for m in "${!MODULE_ON[@]}"; do
+    if [[ -z "${SELECTED[$m]:-}" ]]; then
+        # shellcheck disable=SC2206
+        CMAKE_FLAGS+=(${MODULE_OFF[$m]})
+    fi
 done
 
 echo "[build] modules: $LQC_MODULES"

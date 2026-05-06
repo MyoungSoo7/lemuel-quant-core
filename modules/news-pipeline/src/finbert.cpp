@@ -1,9 +1,11 @@
 #include "news/finbert.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <unordered_map>
 #include <vector>
 
 #ifdef LQC_HAS_ONNX
