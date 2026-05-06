@@ -82,6 +82,9 @@ void apply_rlimits(std::chrono::milliseconds cpu_time,
 
 bool install_seccomp_whitelist() {
 #ifdef LQC_HAS_SECCOMP
+    if (const char* dis = std::getenv("LQC_DISABLE_SECCOMP"); dis && *dis) {
+        return false;
+    }
     auto ctx = seccomp_init(SCMP_ACT_KILL_PROCESS);
     if (!ctx) return false;
 
