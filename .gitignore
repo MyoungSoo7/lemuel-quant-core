@@ -1,0 +1,49 @@
+# Build
+build/
+out/
+cmake-build-*/
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.a
+*.exe
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+install_manifest.txt
+Testing/
+compile_commands.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.cache/
+.clangd/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / config
+*.env
+.env.*
+secrets/
+config/local/
+
+# Data
+data/raw/
+data/cache/
+*.parquet
+*.db
+*.sqlite
+
+# Logs
+logs/
+*.log
