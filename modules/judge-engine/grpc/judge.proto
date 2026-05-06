@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package lqc.judge.v1;
+
+service Judge {
+    rpc Submit(SubmitRequest) returns (SubmitResponse);
+    rpc Stream(SubmitRequest) returns (stream CaseUpdate);
+}
+
+message TestCase {
+    bytes input = 1;
+    bytes expected_output = 2;
+}
+
+message Limits {
+    uint32 wall_time_ms = 1;
+    uint32 cpu_time_ms = 2;
+    uint64 memory_bytes = 3;
+    uint64 output_bytes = 4;
+}
+
+message SubmitRequest {
+    string language = 1;        // "cpp", later: "py", "java", "go"
+    bytes  source = 2;
+    Limits limits = 3;
+    repeated TestCase cases = 4;
+    string submission_id = 5;
+}
+
+enum Verdict {
+    UNKNOWN = 0;
+    AC      = 1;
+    WA      = 2;
+    TLE     = 3;
+    MLE     = 4;
+    OLE     = 5;
+    RE      = 6;
+    CE      = 7;
+    IE      = 8;
+}
+
+message CaseResult {
+    Verdict verdict      = 1;
+    uint32  wall_time_ms = 2;
+    uint64  memory_bytes = 3;
+    bytes   actual_output = 4;
+}
+
+message SubmitResponse {
+    Verdict overall = 1;
+    repeated CaseResult cases = 2;
+    string compile_log = 3;
+}
+
+message CaseUpdate {
+    uint32 case_index = 1;
+    CaseResult result = 2;
+    bool is_last = 3;
+}
