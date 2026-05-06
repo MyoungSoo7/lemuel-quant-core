@@ -1,0 +1,22 @@
+[Unit]
+Description=lemuel-quant-core dart-crawler (DART OpenAPI poll → store)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lqc
+Group=lqc
+WorkingDirectory=/opt/lqc/lemuel-quant-core
+EnvironmentFile=/etc/lqc/dart-crawler.env
+ExecStart=/opt/lqc/bin/dart_crawler
+Restart=on-failure
+RestartSec=10s
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

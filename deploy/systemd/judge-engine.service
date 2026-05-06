@@ -1,0 +1,30 @@
+[Unit]
+Description=lemuel-quant-core judge-engine (gRPC, codingtest)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lqc
+Group=lqc
+WorkingDirectory=/opt/lqc/lemuel-quant-core
+EnvironmentFile=-/etc/lqc/judge-engine.env
+ExecStart=/opt/lqc/bin/judge_engine_grpc 0.0.0.0:50051
+Restart=on-failure
+RestartSec=2s
+LimitNOFILE=65536
+
+# Hardening (the binary is sandbox-aware but the unit also locks down)
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/lqc/var
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=false   # judge-engine writes its own cgroup leafs
+RestrictRealtime=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,26 @@
+[Unit]
+Description=lemuel-quant-core news-pipeline (RSS + NER + KR-FinBERT)
+After=network-online.target redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lqc
+Group=lqc
+WorkingDirectory=/opt/lqc/lemuel-quant-core
+EnvironmentFile=/etc/lqc/news-pipeline.env
+# LQC_FINBERT_DIR=/opt/lqc/models/finbert
+# LQC_NEWS_TICKERS=/opt/lqc/data/tickers.csv
+ExecStart=/opt/lqc/bin/news_pipeline
+Restart=on-failure
+RestartSec=5s
+MemoryHigh=2G
+MemoryMax=3G
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,24 @@
+[Unit]
+Description=lemuel-quant-core market-feed (Binance WS → Redis)
+After=network-online.target redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lqc
+Group=lqc
+WorkingDirectory=/opt/lqc/lemuel-quant-core
+EnvironmentFile=-/etc/lqc/market-feed.env
+ExecStart=/opt/lqc/bin/market_feed 127.0.0.1 6379
+Restart=on-failure
+RestartSec=2s
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,24 @@
+[Unit]
+Description=lemuel-quant-core stock-feed (KIS WS → Redis)
+After=network-online.target redis-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lqc
+Group=lqc
+WorkingDirectory=/opt/lqc/lemuel-quant-core
+EnvironmentFile=/etc/lqc/stock-feed.env
+ExecStart=/opt/lqc/bin/stock_feed
+Restart=on-failure
+RestartSec=2s
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

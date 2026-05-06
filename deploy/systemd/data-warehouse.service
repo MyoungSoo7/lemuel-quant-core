@@ -1,0 +1,22 @@
+[Unit]
+Description=lemuel-quant-core data-warehouse (Parquet rollup + R2 backup)
+After=network-online.target
+
+[Service]
+Type=simple
+User=lqc
+Group=lqc
+WorkingDirectory=/opt/lqc/lemuel-quant-core
+EnvironmentFile=/etc/lqc/data-warehouse.env
+ExecStart=/opt/lqc/bin/data_warehouse
+Restart=on-failure
+RestartSec=10s
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/lqc/var/dwh
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

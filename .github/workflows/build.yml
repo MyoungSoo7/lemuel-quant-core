@@ -1,0 +1,46 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            libboost-all-dev libsimdjson-dev libssl-dev \
+            libcurl4-openssl-dev libhiredis-dev \
+            libpq-dev libpqxx-dev libseccomp-dev \
+            libarrow-dev libparquet-dev \
+            protobuf-compiler libprotobuf-dev \
+            libgrpc++-dev protobuf-compiler-grpc
+
+      - name: configure
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLQC_BUILD_JUDGE_ENGINE=ON \
+            -DLQC_JUDGE_GRPC=ON \
+            -DLQC_BUILD_MARKET_FEED=ON \
+            -DLQC_BUILD_STOCK_FEED=ON \
+            -DLQC_BUILD_DART_CRAWLER=ON \
+            -DLQC_BUILD_NEWS_PIPELINE=ON \
+            -DLQC_BUILD_DATA_WAREHOUSE=ON
+
+      - name: build
+        run: cmake --build build --parallel
+
+      - name: smoke
+        run: |
+          ./build/modules/judge-engine/judge_engine \
+            <(echo 'int main(){return 0;}') /dev/null /dev/null || true
+          ls -la build/modules/*/
