@@ -48,8 +48,11 @@ cmake --build build
 ## 로드맵
 
 - [x] 모노레포 부트스트랩
-- [ ] judge-engine MVP (1주차)
-- [ ] market-feed + stock-feed 공통 추상화 (2~3주차)
-- [ ] news-pipeline KoBERT 추론 (4주차)
-- [ ] dart-crawler (5주차)
-- [ ] data-warehouse 통합 (6주차)
+- [x] judge-engine MVP (CLI) + Linux 강화(seccomp+cgroup) + gRPC 서버
+- [x] market-feed (Binance) + stock-feed (KIS) 공통 FeedClient 추상화
+- [x] news-pipeline 4단계 (RSS 크롤러 → NER → 감성 → 점수보드)
+- [x] dart-crawler (DART OpenAPI 폴러 + 중복 제거 store)
+- [x] data-warehouse (TimeSeriesStore + Parquet/CSV writer + R2 uploader)
+- [ ] 실제 외부 의존성 통합 (Boost.Beast WS, simdjson, libpqxx, Arrow, ONNX)
+- [ ] 르무엘/루이스/르무엘클라우드 배포 자동화 (systemd unit + GitHub Actions)
+- [ ] 6개 사이트 백엔드와 실 트래픽 연동
