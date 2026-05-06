@@ -32,7 +32,7 @@ int main() {
     }
 
     auto scorer = news::SentimentScorer::make_default(
-        std::getenv("LQC_KOBERT_PATH") ? std::getenv("LQC_KOBERT_PATH") : "");
+        std::getenv("LQC_FINBERT_DIR") ? std::getenv("LQC_FINBERT_DIR") : "");
     news::NewsScoreBoard board;
 
     while (g_run) {

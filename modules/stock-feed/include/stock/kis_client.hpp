@@ -10,6 +10,7 @@
 namespace stock {
 
 // 한국투자증권 (KIS) OpenAPI WebSocket client.
+// stock-feed의 유일한 거래소 어댑터 — KRX 시세는 KIS 채널로만 받음.
 //
 // REST: https://openapi.koreainvestment.com:9443
 // WS  : ws://ops.koreainvestment.com:21000  (실전)

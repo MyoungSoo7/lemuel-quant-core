@@ -3,6 +3,7 @@ add_executable(news_pipeline
     src/rss_crawler.cpp
     src/ner.cpp
     src/sentiment.cpp
+    src/finbert.cpp
     src/news_score.cpp
 )
 

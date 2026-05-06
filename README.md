@@ -27,7 +27,7 @@
 |------|------|-------------|-----------|
 | `judge-engine` | 샌드박스 코드 채점 (seccomp + cgroup) | codingtest | 르무엘클라우드 |
 | `market-feed` | 암호화폐 거래소 WebSocket 수집 | crypto | 루이스 |
-| `stock-feed` | 한국 주식 시세/호가 수집 (한투/키움) | stock | 루이스 |
+| `stock-feed` | 한국 주식 시세/호가 수집 (한투 OpenAPI) | stock | 루이스 |
 | `dart-crawler` | DART 공시 수집/파싱 | dart | 루이스 |
 | `news-pipeline` | 뉴스 크롤링 + NER + 감성분석 | news | 르무엘 |
 | `data-warehouse` | 통합 시계열 저장 (Parquet + R2 백업) | data | 르무엘 |
