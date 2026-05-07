@@ -78,7 +78,9 @@ std::vector<Disclosure> DartClient::list(const ListQuery& q) {
     auto doc = parser.iterate(padded);
     bool saw_list = false;
     for (auto top : doc.get_object()) {
-        if (top.unescaped_key() != "list") continue;
+        std::string_view top_key;
+        if (top.unescaped_key().get(top_key) != simdjson::SUCCESS) continue;
+        if (top_key != "list") continue;
         saw_list = true;
         for (auto item : top.value().get_array()) {
             Disclosure d;
