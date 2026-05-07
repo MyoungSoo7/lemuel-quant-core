@@ -3,7 +3,6 @@
 #
 # Cron 사용: 30 9 * * *  Rscript /opt/lqc/lemuel-quant-core/r/daily_report/render.R
 suppressPackageStartupMessages({
-  library(quarto)
   library(httr2)
 })
 
@@ -11,9 +10,18 @@ doc_dir <- here::here("r", "daily_report")
 out_html <- file.path(doc_dir, "report.html")
 
 cat("[daily_report] rendering ...\n")
-quarto::quarto_render(file.path(doc_dir, "report.qmd"),
-                       output_format = "html",
-                       output_file   = "report.html")
+# quarto R 패키지는 processx 로 spawn 하다 권한 문제가 자주 생김.
+# system2 직접 호출이 가장 단순하고 robust.
+quarto_bin <- Sys.getenv("QUARTO_BIN",
+                         unset = unname(Sys.which("quarto")))
+if (!nzchar(quarto_bin)) stop("quarto CLI not found in PATH")
+status <- system2(quarto_bin,
+                   args = c("render",
+                             shQuote(file.path(doc_dir, "report.qmd")),
+                             "--to", "html",
+                             "--output", "report.html"),
+                   stdout = "", stderr = "")
+if (status != 0) stop("quarto render failed (exit ", status, ")")
 
 if (file.exists(out_html)) {
   size <- file.info(out_html)$size
