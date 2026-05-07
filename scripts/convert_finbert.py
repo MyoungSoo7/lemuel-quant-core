@@ -39,6 +39,10 @@ def main() -> None:
     dummy_ids = torch.zeros((1, args.seq_len), dtype=torch.long)
     dummy_mask = torch.ones((1, args.seq_len), dtype=torch.long)
     onnx_path = out / "kr-finbert.onnx"
+    # dynamo=False forces the legacy exporter which inlines all weights (no
+    # external .data file) and emits IR version compatible with
+    # ONNX Runtime ≥ 1.16. The new dynamo exporter in torch 2.x splits
+    # weights into a sidecar that we'd have to ship separately.
     torch.onnx.export(
         model,
         (dummy_ids, dummy_mask),
@@ -50,6 +54,7 @@ def main() -> None:
                       "logits":         {0: "batch"}},
         opset_version=args.opset,
         do_constant_folding=True,
+        dynamo=False,
     )
     print(f"      wrote {onnx_path} ({os.path.getsize(onnx_path)/1e6:.1f} MB)")
 

@@ -105,29 +105,33 @@ public:
           max_seq_len_(max_seq_len) {}
 
     Probs predict(const std::string& text) override {
-        // 1) tokenize → input_ids, attention_mask
-        const auto ids = tokenizer_.encode(text, max_seq_len_);
+        // 1) tokenize → input_ids, attention_mask, token_type_ids(=0 for
+        //    single-sequence classification — Optimum-exported BERT requires
+        //    this input even though it's all zeros)
+        auto ids = tokenizer_.encode(text, max_seq_len_);
         std::vector<std::int64_t> mask(ids.size(), 1);
         for (std::size_t i = 0; i < ids.size(); ++i) {
             if (ids[i] == tokenizer_.pad_id()) mask[i] = 0;
         }
+        std::vector<std::int64_t> ttids(ids.size(), 0);
 
         // 2) build ORT tensors with shape [1, seq]
-        Ort::AllocatorWithDefaultOptions alloc;
         const std::array<std::int64_t, 2> shape{1, max_seq_len_};
         auto mem = Ort::MemoryInfo::CreateCpu(
             OrtArenaAllocator, OrtMemTypeDefault);
 
         Ort::Value input_ids = Ort::Value::CreateTensor<std::int64_t>(
-            mem, const_cast<std::int64_t*>(ids.data()), ids.size(),
-            shape.data(), shape.size());
+            mem, ids.data(), ids.size(), shape.data(), shape.size());
         Ort::Value attn = Ort::Value::CreateTensor<std::int64_t>(
-            mem, mask.data(), mask.size(),
-            shape.data(), shape.size());
+            mem, mask.data(), mask.size(), shape.data(), shape.size());
+        Ort::Value tt = Ort::Value::CreateTensor<std::int64_t>(
+            mem, ttids.data(), ttids.size(), shape.data(), shape.size());
 
-        const char* in_names[]  = {"input_ids", "attention_mask"};
+        const char* in_names[]  = {"input_ids", "attention_mask",
+                                     "token_type_ids"};
         const char* out_names[] = {"logits"};
-        std::array<Ort::Value, 2> inputs{std::move(input_ids), std::move(attn)};
+        std::array<Ort::Value, 3> inputs{
+            std::move(input_ids), std::move(attn), std::move(tt)};
 
         auto outs = session_.Run(
             Ort::RunOptions{nullptr}, in_names, inputs.data(), inputs.size(),
