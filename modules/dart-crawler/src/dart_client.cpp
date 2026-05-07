@@ -76,12 +76,13 @@ std::vector<Disclosure> DartClient::list(const ListQuery& q) {
     simdjson::ondemand::parser parser;
     simdjson::padded_string padded(body);
     auto doc = parser.iterate(padded);
-    auto list_val = doc.find_field("list");
-    if (list_val.error() == simdjson::SUCCESS) {
-        for (auto item : list_val.get_array()) {
-            auto obj = item.get_object();
+    bool saw_list = false;
+    for (auto top : doc.get_object()) {
+        if (top.unescaped_key() != "list") continue;
+        saw_list = true;
+        for (auto item : top.value().get_array()) {
             Disclosure d;
-            for (auto field : obj) {
+            for (auto field : item.get_object()) {
                 std::string_view key = field.unescaped_key();
                 if      (key == "rcept_no")   d.rcept_no   = sj_str(field.value());
                 else if (key == "corp_code")  d.corp_code  = sj_str(field.value());
@@ -95,8 +96,11 @@ std::vector<Disclosure> DartClient::list(const ListQuery& q) {
             }
             if (!d.rcept_no.empty()) out.push_back(std::move(d));
         }
-    } else {
-        std::cerr << "[dart] no 'list' field in response\n";
+        break;
+    }
+    if (!saw_list) {
+        std::cerr << "[dart] no 'list' field in response (preview: "
+                  << body.substr(0, 200) << ")\n";
     }
 #else
     (void)body;
