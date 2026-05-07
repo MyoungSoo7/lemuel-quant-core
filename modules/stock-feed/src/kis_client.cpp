@@ -152,13 +152,17 @@ void KisClient::run_loop() {
                     "KIS approval_key 발급 실패 — 키/시크릿 또는 paper 모드 확인");
             }
 
-            const std::string ws_host = opts_.creds.paper
-                ? "ops.koreainvestment.com" : "ops.koreainvestment.com";
+            // KIS WS 호스트: 모의/실전 동일하지만 port 다름. (KIS docs 기준
+            // 모의: ops.koreainvestment.com:31000, 실전: ops.koreainvestment.com:21000)
+            // 과거 코드에 paper/prod 호스트가 같다는 인라인 표현이 있었지만
+            // 그건 KIS spec 그대로이고 분기는 port 로만 결정.
+            const std::string ws_host = "ops.koreainvestment.com";
             const std::string ws_port = opts_.creds.paper ? "31000" : "21000";
 
             net::io_context ioc;
             tcp::resolver resolver{ioc};
             websocket::stream<beast::tcp_stream> ws{ioc};
+            ws.read_message_max(256 * 1024);
 
             const auto results = resolver.resolve(ws_host, ws_port);
             beast::get_lowest_layer(ws).connect(results);

@@ -7,9 +7,11 @@
 #include <filesystem>
 #include <fstream>
 
-#ifdef __linux__
+#include <csignal>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#ifdef __linux__
 #include "judge/sandbox_linux.hpp"
 #endif
 
@@ -138,49 +140,77 @@ ExecutionResult Sandbox::run(const std::filesystem::path& executable,
 
 #else  // !__linux__
 
-// Dev/macOS path: popen + temp stdin file. No real isolation.
+// Dev path (macOS/BSD): fork+execv with pipes — no shell interpretation,
+// no isolation but no command injection either. The Linux path provides
+// the real sandbox; this branch exists so dev iteration works.
 ExecutionResult Sandbox::run(const std::filesystem::path& executable,
                              std::string_view stdin_data) {
     ExecutionResult result;
 
-    const auto stdin_path = std::filesystem::temp_directory_path() /
-                            "lqc-judge-stdin.txt";
-    {
-        std::ofstream sin(stdin_path);
-        sin.write(stdin_data.data(),
-                  static_cast<std::streamsize>(stdin_data.size()));
-    }
-
-    std::string cmd = executable.string() + " < " + stdin_path.string() +
-                      " 2>&1";
-
-    const auto start = std::chrono::steady_clock::now();
-    std::FILE* pipe = ::popen(cmd.c_str(), "r");
-    if (!pipe) {
+    int in_pipe[2]{-1, -1};
+    int out_pipe[2]{-1, -1};
+    if (pipe(in_pipe) < 0 || pipe(out_pipe) < 0) {
         result.verdict = Verdict::InternalError;
         return result;
     }
 
+    const auto start = std::chrono::steady_clock::now();
+    const pid_t pid = fork();
+    if (pid < 0) {
+        result.verdict = Verdict::InternalError;
+        return result;
+    }
+    if (pid == 0) {
+        dup2(in_pipe[0], 0);
+        dup2(out_pipe[1], 1);
+        dup2(out_pipe[1], 2);
+        close(in_pipe[1]);
+        close(out_pipe[0]);
+        char* argv[] = {const_cast<char*>(executable.c_str()), nullptr};
+        execv(executable.c_str(), argv);
+        std::_Exit(127);
+    }
+
+    close(in_pipe[0]);
+    close(out_pipe[1]);
+    if (!stdin_data.empty()) {
+        const auto written = write(in_pipe[1], stdin_data.data(),
+                                    stdin_data.size());
+        (void)written;
+    }
+    close(in_pipe[1]);
+
     char buf[4096];
     std::string captured;
-    while (std::size_t n = std::fread(buf, 1, sizeof(buf), pipe)) {
-        captured.append(buf, n);
+    ssize_t n;
+    while ((n = read(out_pipe[0], buf, sizeof(buf))) > 0) {
+        captured.append(buf, static_cast<std::size_t>(n));
         if (captured.size() > limits_.output_bytes) {
+            kill(pid, SIGKILL);
             result.verdict = Verdict::OutputLimitExceeded;
-            ::pclose(pipe);
+            close(out_pipe[0]);
+            int st;
+            waitpid(pid, &st, 0);
             return result;
         }
     }
+    close(out_pipe[0]);
 
-    const int status = ::pclose(pipe);
+    int status = 0;
+    waitpid(pid, &status, 0);
     const auto end = std::chrono::steady_clock::now();
     result.wall_time_used =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    result.exit_code = status;
     result.stdout_data = std::move(captured);
-    result.verdict = (status == 0) ? Verdict::Accepted : Verdict::RuntimeError;
-    if (result.wall_time_used > limits_.wall_time) {
+    result.exit_code = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+    if (WIFSIGNALED(status)) {
+        result.verdict = Verdict::RuntimeError;
+    } else if (result.wall_time_used > limits_.wall_time) {
         result.verdict = Verdict::TimeLimitExceeded;
+    } else if (result.exit_code != 0) {
+        result.verdict = Verdict::RuntimeError;
+    } else {
+        result.verdict = Verdict::Accepted;
     }
     return result;
 }

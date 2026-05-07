@@ -1,6 +1,7 @@
 #include "dart/dart_client.hpp"
 
 #include <chrono>
+#include <deque>
 #include <iostream>
 #include <memory>
 #include <sstream>
@@ -51,18 +52,25 @@ std::vector<Disclosure> DartClient::list(const ListQuery& q) {
     std::vector<Disclosure> out;
 
 #ifdef LQC_HAS_CURL
-    std::ostringstream url;
-    url << impl_->base_url << "/api/list.json"
-        << "?crtfc_key=" << impl_->api_key
-        << "&page_no=" << q.page_no
-        << "&page_count=" << q.page_count;
-    if (!q.corp_code.empty())  url << "&corp_code=" << q.corp_code;
-    if (!q.bgn_de.empty())     url << "&bgn_de="    << q.bgn_de;
-    if (!q.end_de.empty())     url << "&end_de="    << q.end_de;
-    if (!q.pblntf_ty.empty())  url << "&pblntf_ty=" << q.pblntf_ty;
-
     CURL* c = curl_easy_init();
     if (!c) return out;
+    auto esc = [c](const std::string& s) {
+        char* e = curl_easy_escape(c, s.c_str(),
+                                    static_cast<int>(s.size()));
+        std::string out_s = e ? e : s;
+        if (e) curl_free(e);
+        return out_s;
+    };
+    std::ostringstream url;
+    url << impl_->base_url << "/api/list.json"
+        << "?crtfc_key=" << esc(impl_->api_key)
+        << "&page_no="   << q.page_no
+        << "&page_count="<< q.page_count;
+    if (!q.corp_code.empty())  url << "&corp_code=" << esc(q.corp_code);
+    if (!q.bgn_de.empty())     url << "&bgn_de="    << esc(q.bgn_de);
+    if (!q.end_de.empty())     url << "&end_de="    << esc(q.end_de);
+    if (!q.pblntf_ty.empty())  url << "&pblntf_ty=" << esc(q.pblntf_ty);
+
     std::string body;
     curl_easy_setopt(c, CURLOPT_URL, url.str().c_str());
     curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
@@ -132,13 +140,24 @@ std::vector<Disclosure> DartClient::list(const ListQuery& q) {
 void DartClient::poll_loop(std::chrono::seconds interval,
                            std::function<void(const Disclosure&)> on_new,
                            std::function<bool()> keep_running) {
+    // Bounded LRU-style: keep only the most recent N rcept_no's. DART公시
+    // 번호는 시간순 단조 증가하므로 가장 작은 값부터 evict.
+    constexpr std::size_t kMaxSeen = 10'000;
     std::unordered_set<std::string> seen;
+    std::deque<std::string> seen_order;
     while (keep_running()) {
         ListQuery q;
         q.page_count = 100;
         q.page_no = 1;
         for (auto& d : list(q)) {
-            if (seen.insert(d.rcept_no).second) on_new(d);
+            if (seen.insert(d.rcept_no).second) {
+                seen_order.push_back(d.rcept_no);
+                if (seen_order.size() > kMaxSeen) {
+                    seen.erase(seen_order.front());
+                    seen_order.pop_front();
+                }
+                on_new(d);
+            }
         }
         std::this_thread::sleep_for(interval);
     }

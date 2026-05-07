@@ -94,6 +94,9 @@ void BinanceClient::run_loop() {
             tcp::resolver resolver{ioc};
             websocket::stream<beast::ssl_stream<beast::tcp_stream>> ws{
                 ioc, ctx};
+            // Cap incoming frame size — Binance 의 정상 페이로드는 수십 KB
+            // 미만. MITM/오용으로 GB 단위 frame 받지 않도록 256KB 캡.
+            ws.read_message_max(256 * 1024);
 
             const auto results =
                 resolver.resolve(options_.host, options_.port);

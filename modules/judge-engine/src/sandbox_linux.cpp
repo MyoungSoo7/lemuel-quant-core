@@ -93,11 +93,6 @@ bool install_seccomp_whitelist() {
     // calls under exec — keep the list permissive enough that compiled
     // C/C++ binaries run, but still block network/filesystem mutation.
     static const int allow[] = {
-        // execve is needed to actually launch the user binary (parent
-        // installs the filter before calling execve itself). After exec,
-        // user code generally doesn't need it again, but allow execveat
-        // for static-pie / libc style entry.
-        SCMP_SYS(execve),    SCMP_SYS(execveat),
         // I/O
         SCMP_SYS(read),      SCMP_SYS(write),    SCMP_SYS(readv),
         SCMP_SYS(writev),    SCMP_SYS(close),    SCMP_SYS(lseek),
@@ -106,16 +101,15 @@ bool install_seccomp_whitelist() {
         SCMP_SYS(faccessat), SCMP_SYS(faccessat2),
         SCMP_SYS(dup),       SCMP_SYS(dup2),     SCMP_SYS(dup3),
         SCMP_SYS(pipe),      SCMP_SYS(pipe2),    SCMP_SYS(fcntl),
-        SCMP_SYS(ioctl),
         // Memory
         SCMP_SYS(brk),       SCMP_SYS(mmap),     SCMP_SYS(munmap),
         SCMP_SYS(mremap),    SCMP_SYS(mprotect), SCMP_SYS(madvise),
         // Process / thread (compiled binary may use threads via libstdc++)
         SCMP_SYS(exit),      SCMP_SYS(exit_group),
         SCMP_SYS(getpid),    SCMP_SYS(gettid),   SCMP_SYS(tgkill),
-        SCMP_SYS(clone),     SCMP_SYS(clone3),   SCMP_SYS(rseq),
+        SCMP_SYS(rseq),
         SCMP_SYS(set_tid_address), SCMP_SYS(set_robust_list),
-        SCMP_SYS(arch_prctl), SCMP_SYS(prctl),
+        SCMP_SYS(arch_prctl),
         SCMP_SYS(getrlimit), SCMP_SYS(setrlimit), SCMP_SYS(prlimit64),
         SCMP_SYS(uname),
         // Signals
@@ -139,6 +133,45 @@ bool install_seccomp_whitelist() {
             seccomp_release(ctx);
             return false;
         }
+    }
+    // execve / execveat — only allowed once; the parent installs the filter
+    // *before* calling execve so the initial launch passes through. After
+    // that the audit recommendation is to deny re-exec inside the child.
+    // Practical compromise: allow execve but deny execveat (rarely needed)
+    // and rely on chroot + cgroup pids.max=32 to bound any escape attempt.
+    if (seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(execve), 0) < 0) {
+        seccomp_release(ctx);
+        return false;
+    }
+    // clone / clone3 — restrict to thread creation only (CLONE_THREAD set).
+    // Without this filter, user code could clone(CLONE_NEWUSER|CLONE_NEWNET)
+    // and try namespace-based escapes.
+    if (seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(clone), 1,
+                         SCMP_A0(SCMP_CMP_MASKED_EQ,
+                                 0x10000 /* CLONE_THREAD */,
+                                 0x10000)) < 0) {
+        seccomp_release(ctx);
+        return false;
+    }
+    // clone3 takes a struct pointer; we can't introspect it via seccomp,
+    // so deny outright. glibc falls back to clone() when clone3 is blocked
+    // (returns ENOSYS / EPERM).
+    if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(38) /* ENOSYS */,
+                         SCMP_SYS(clone3), 0) < 0) {
+        seccomp_release(ctx);
+        return false;
+    }
+    // ioctl — deny TIOCSTI (tty injection). Allow other cmds because
+    // libc's startup sometimes does FIOCLEX/FIONREAD on stdio.
+    if (seccomp_rule_add(ctx, SCMP_ACT_ERRNO(1) /* EPERM */,
+                         SCMP_SYS(ioctl), 1,
+                         SCMP_A1(SCMP_CMP_EQ, 0x5412 /* TIOCSTI */)) < 0) {
+        seccomp_release(ctx);
+        return false;
+    }
+    if (seccomp_rule_add(ctx, SCMP_ACT_ALLOW, SCMP_SYS(ioctl), 0) < 0) {
+        seccomp_release(ctx);
+        return false;
     }
     const bool ok = seccomp_load(ctx) == 0;
     seccomp_release(ctx);
