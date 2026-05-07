@@ -1,0 +1,24 @@
+[Unit]
+Description=lemuel-quant-core shiny dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lqc
+Group=lqc
+WorkingDirectory=/opt/lqc/lemuel-quant-core
+EnvironmentFile=/etc/lqc/shiny-dashboard.env
+ExecStart=/usr/bin/Rscript -e "shiny::runApp('r/shiny_dashboard', host='127.0.0.1', port=3838)"
+Restart=on-failure
+RestartSec=5s
+MemoryHigh=2G
+MemoryMax=3G
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,15 @@
+# lemuel-quant-core / r 자동화 cron 예시. 르무엘에 설치.
+# crontab -e 로 추가.
+
+# 매일 오전 09:30 KST — 일간 리포트 렌더링 + Telegram 전송
+30 0 * * 1-5 cd /opt/lqc/lemuel-quant-core && /usr/bin/Rscript r/daily_report/render.R >> /var/log/lqc/daily_report.log 2>&1
+
+# 매 5분 — GARCH 변동성 모델 publish (시장 시간만)
+*/5 0-7,10-23 * * 1-5 cd /opt/lqc/lemuel-quant-core && /usr/bin/Rscript r/stat_models/garch_volatility.R btcusdt >> /var/log/lqc/garch.log 2>&1
+*/5 0-7,10-23 * * 1-5 cd /opt/lqc/lemuel-quant-core && /usr/bin/Rscript r/stat_models/garch_volatility.R ethusdt >> /var/log/lqc/garch.log 2>&1
+
+# 매 시간 — ARIMA 1시간 예측
+0 * * * * cd /opt/lqc/lemuel-quant-core && /usr/bin/Rscript r/stat_models/arima_forecast.R btcusdt 60 >> /var/log/lqc/arima.log 2>&1
+
+# 매일 오전 08:00 — 페어트레이딩 후보 재검토
+0 23 * * 0-4 cd /opt/lqc/lemuel-quant-core && /usr/bin/Rscript r/stat_models/cointegration.R btcusdt ethusdt >> /var/log/lqc/coint.log 2>&1

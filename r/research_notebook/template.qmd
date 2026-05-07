@@ -1,0 +1,75 @@
+---
+title: "Coding Test Quant Challenge — Template"
+author: "lemuel-quant-core"
+format:
+  html:
+    toc: true
+    code-fold: false
+    theme: cosmo
+execute:
+  echo: true
+  warning: false
+---
+
+# 문제
+
+> 주어진 시계열 데이터에서 다음 1시간 가격을 가장 잘 예측하는 모델을 만들고 평가하시오.
+
+# 데이터 로딩
+
+```{r load}
+suppressPackageStartupMessages({
+  library(xts)
+  library(forecast)
+  library(rugarch)
+  library(quantmod)
+})
+source(here::here("r", "common", "r2.R"))
+
+trades <- r2_load_trades("btcusdt")
+prices <- xts::xts(trades[["val.price"]], order.by = trades$ts)
+ep <- xts::endpoints(prices, on = "minutes", k = 1)
+m1 <- xts::period.apply(prices, ep, function(x) as.numeric(tail(x, 1)))
+nrow(m1)
+```
+
+# 모델 1: ARIMA
+
+```{r arima}
+fit <- auto.arima(as.numeric(m1))
+summary(fit)
+```
+
+# 모델 2: GARCH (변동성 계열)
+
+```{r garch}
+rets <- na.omit(diff(log(as.numeric(m1))))
+spec <- ugarchspec(
+  variance.model = list(garchOrder = c(1, 1)),
+  mean.model     = list(armaOrder = c(0, 0))
+)
+gfit <- ugarchfit(spec, rets)
+gfit
+```
+
+# 평가 (rolling cross-validation)
+
+```{r eval}
+n <- length(m1)
+train_end <- floor(n * 0.8)
+train <- m1[1:train_end]
+test  <- m1[(train_end + 1):n]
+
+f <- auto.arima(as.numeric(train))
+pred <- forecast(f, h = length(test))$mean
+rmse <- sqrt(mean((as.numeric(test) - as.numeric(pred))^2))
+mape <- mean(abs((as.numeric(test) - as.numeric(pred)) / as.numeric(test)))
+
+cat("RMSE:", rmse, "\nMAPE:", mape, "\n")
+```
+
+# 제출 가이드
+
+1. 위 셀을 채워 `Rscript -e 'rmarkdown::render("solution.qmd")'` 로 실행
+2. 산출 HTML 을 codingtest 사이트에 업로드
+3. 평가 기준: RMSE 가 baseline (`auto.arima` 기본) 의 0.9 배 이하
