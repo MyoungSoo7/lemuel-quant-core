@@ -1,0 +1,22 @@
+[Unit]
+Description=lemuel-quant-core gateway (Prometheus + SSE bridge + healthz)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lqc
+Group=lqc
+WorkingDirectory=/opt/lqc
+EnvironmentFile=-/etc/lqc/lqc-gateway.env
+ExecStart=/opt/lqc/bin/lqc-gateway --listen 127.0.0.1:9099 --redis 127.0.0.1:6379
+Restart=on-failure
+RestartSec=2s
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
