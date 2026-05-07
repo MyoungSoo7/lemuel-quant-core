@@ -65,12 +65,26 @@ std::vector<Disclosure> DartClient::list(const ListQuery& q) {
     if (!c) return out;
     std::string body;
     curl_easy_setopt(c, CURLOPT_URL, url.str().c_str());
+    curl_easy_setopt(c, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(c, CURLOPT_USERAGENT, "lemuel-quant-core/0.1");
+    curl_easy_setopt(c, CURLOPT_ACCEPT_ENCODING, "");
     curl_easy_setopt(c, CURLOPT_WRITEFUNCTION, curl_write);
     curl_easy_setopt(c, CURLOPT_WRITEDATA, &body);
-    curl_easy_setopt(c, CURLOPT_TIMEOUT, 10L);
+    curl_easy_setopt(c, CURLOPT_TIMEOUT, 15L);
     const auto rc = curl_easy_perform(c);
+    long http_code = 0;
+    curl_easy_getinfo(c, CURLINFO_RESPONSE_CODE, &http_code);
     curl_easy_cleanup(c);
-    if (rc != CURLE_OK) return out;
+    if (rc != CURLE_OK) {
+        std::cerr << "[dart] curl error " << rc << ": "
+                  << curl_easy_strerror(rc) << " (url=" << url.str() << ")\n";
+        return out;
+    }
+    if (http_code != 200) {
+        std::cerr << "[dart] HTTP " << http_code << " for " << url.str()
+                  << " body=" << body.substr(0, 200) << "\n";
+        return out;
+    }
 
 #ifdef LQC_HAS_SIMDJSON
     simdjson::ondemand::parser parser;
