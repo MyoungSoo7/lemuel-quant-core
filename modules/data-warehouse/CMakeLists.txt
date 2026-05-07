@@ -3,10 +3,18 @@ add_executable(data_warehouse
     src/timeseries_store.cpp
     src/parquet_writer.cpp
     src/r2_uploader.cpp
+    src/rollup.cpp
+    src/redis_subscriber.cpp
 )
 
 target_include_directories(data_warehouse PRIVATE include)
 target_link_libraries(data_warehouse PRIVATE lqc_shared)
+
+find_library(HIREDIS_LIB hiredis)
+if(HIREDIS_LIB)
+    target_link_libraries(data_warehouse PRIVATE ${HIREDIS_LIB})
+    target_compile_definitions(data_warehouse PRIVATE LQC_HAS_HIREDIS=1)
+endif()
 
 # Apache Arrow / Parquet — required when this module is enabled.
 # Without it, parquet_writer falls back to CSV (kept for CI builds without arrow).

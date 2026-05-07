@@ -1,0 +1,22 @@
+[Unit]
+Description=lemuel-quant-core strategy-bot (Redis → signals → Telegram)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lqc
+Group=lqc
+WorkingDirectory=/opt/lqc/lemuel-quant-core/python
+EnvironmentFile=/etc/lqc/strategy-bot.env
+ExecStart=/opt/lqc/python/bin/python -m strategy_bot.run
+Restart=on-failure
+RestartSec=5s
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
