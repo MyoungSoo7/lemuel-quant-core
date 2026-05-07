@@ -1,0 +1,25 @@
+[Unit]
+Description=lemuel-quant-core orderbook-matcher (Rust, Binance L2 → top-of-book Redis)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lqc
+Group=lqc
+WorkingDirectory=/opt/lqc
+EnvironmentFile=-/etc/lqc/orderbook-matcher.env
+ExecStart=/opt/lqc/bin/lqc-orderbook-matcher \
+    --symbols btcusdt,ethusdt --depth 20 \
+    --redis-url redis://127.0.0.1:6379 \
+    --publish-every 5
+Restart=on-failure
+RestartSec=2s
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
