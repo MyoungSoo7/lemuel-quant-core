@@ -14,8 +14,11 @@ sudo mkdir -p /opt/lqc && sudo chown $USER:$USER /opt/lqc
 cd /opt/lqc
 git clone https://github.com/MyoungSoo7/lemuel-quant-core.git
 
-# 2. 의존성 설치 (호스트에 따라 ONNX/AWS 옵션 토글)
-sudo LQC_INSTALL_ONNX=1 LQC_INSTALL_AWS_S3=1 \
+# 2. 의존성 설치 (호스트별 옵션 토글)
+#    LQC_INSTALL_ONNX=1     news-pipeline 호스트
+#    LQC_INSTALL_AWS_S3=1   data-warehouse 호스트 (R2 업로드)
+#    LQC_INSTALL_ARROW=1    data-warehouse 호스트 (Parquet 진짜 출력)
+sudo LQC_INSTALL_ONNX=1 LQC_INSTALL_AWS_S3=1 LQC_INSTALL_ARROW=1 \
     bash lemuel-quant-core/deploy/install_deps.sh
 
 # 3. 빌드 (호스트별 LQC_MODULES 다름)

@@ -9,7 +9,7 @@ apt-get update
 apt-get install -y --no-install-recommends \
     build-essential cmake ninja-build pkg-config git
 
-# C++ libs used by modules
+# C++ libs used by modules (Apache Arrow 는 default Ubuntu 저장소에 없음 — 별도 처리)
 apt-get install -y --no-install-recommends \
     libboost-all-dev          `# Boost.Beast for WebSocket` \
     libsimdjson-dev           `# fast JSON parsing` \
@@ -18,9 +18,23 @@ apt-get install -y --no-install-recommends \
     libhiredis-dev            `# Redis publisher` \
     libpq-dev libpqxx-dev     `# PostgreSQL` \
     libseccomp-dev            `# judge-engine sandbox` \
-    libarrow-dev libparquet-dev `# data-warehouse` \
     protobuf-compiler libprotobuf-dev \
     libgrpc++-dev protobuf-compiler-grpc
+
+# Apache Arrow / Parquet — only on hosts running data-warehouse.
+# Ubuntu 24.04 default 저장소에 libarrow-dev 없으므로 Apache 공식 apt repo 추가.
+# Reference: https://arrow.apache.org/install/
+if [[ "${LQC_INSTALL_ARROW:-0}" == "1" ]]; then
+    CODENAME="$(lsb_release -cs 2>/dev/null || echo noble)"
+    APT_DEB="apache-arrow-apt-source-latest-${CODENAME}.deb"
+    cd /tmp
+    curl -fsSL "https://apache.jfrog.io/artifactory/arrow/${CODENAME}/${APT_DEB}" \
+        -o "$APT_DEB"
+    apt-get install -y "/tmp/$APT_DEB"
+    apt-get update
+    apt-get install -y --no-install-recommends libarrow-dev libparquet-dev
+    rm -f "/tmp/$APT_DEB"
+fi
 
 # ONNX Runtime: only on hosts running news-pipeline.
 # 체크섬은 Microsoft 공식 GitHub Release SHA256SUMS 에서 가져온 값. 새 버전 핀 시
