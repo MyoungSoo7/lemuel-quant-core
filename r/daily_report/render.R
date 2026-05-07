@@ -21,10 +21,9 @@ cat("[daily_report] rendering at ", work_dir, " ...\n", sep = "")
 quarto_bin <- Sys.getenv("QUARTO_BIN",
                          unset = unname(Sys.which("quarto")))
 if (!nzchar(quarto_bin)) stop("quarto CLI not found in PATH")
+old_wd <- getwd(); setwd(work_dir); on.exit(setwd(old_wd), add = TRUE)
 status <- system2(quarto_bin,
-                   args = c("render", shQuote(file.path(work_dir, "report.qmd")),
-                             "--to", "html",
-                             "--output", "report.html"),
+                   args = c("render", "report.qmd", "--to", "html"),
                    stdout = "", stderr = "")
 if (status != 0) stop("quarto render failed (exit ", status, ")")
 
