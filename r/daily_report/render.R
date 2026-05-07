@@ -7,17 +7,22 @@ suppressPackageStartupMessages({
 })
 
 doc_dir <- here::here("r", "daily_report")
-out_html <- file.path(doc_dir, "report.html")
 
-cat("[daily_report] rendering ...\n")
-# quarto R 패키지는 processx 로 spawn 하다 권한 문제가 자주 생김.
-# system2 직접 호출이 가장 단순하고 robust.
+# Quarto needs a writable workdir. Copy the .qmd to LQC_REPORT_DIR
+# (default /tmp/lqc-report) and render there.
+work_dir <- Sys.getenv("LQC_REPORT_DIR", unset = "/tmp/lqc-report")
+dir.create(work_dir, recursive = TRUE, showWarnings = FALSE)
+file.copy(file.path(doc_dir, "report.qmd"),
+          file.path(work_dir, "report.qmd"),
+          overwrite = TRUE)
+out_html <- file.path(work_dir, "report.html")
+
+cat("[daily_report] rendering at ", work_dir, " ...\n", sep = "")
 quarto_bin <- Sys.getenv("QUARTO_BIN",
                          unset = unname(Sys.which("quarto")))
 if (!nzchar(quarto_bin)) stop("quarto CLI not found in PATH")
 status <- system2(quarto_bin,
-                   args = c("render",
-                             shQuote(file.path(doc_dir, "report.qmd")),
+                   args = c("render", shQuote(file.path(work_dir, "report.qmd")),
                              "--to", "html",
                              "--output", "report.html"),
                    stdout = "", stderr = "")
