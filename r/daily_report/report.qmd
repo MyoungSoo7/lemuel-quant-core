@@ -78,12 +78,17 @@ for (s in symbols) {
 ```{r dart-recent}
 dsn <- Sys.getenv("LQC_PG_DSN")
 if (nzchar(dsn)) {
-  con <- pg_connect(dsn)
-  on.exit(DBI::dbDisconnect(con), add = TRUE)
-  recent <- dart_recent(con, limit = 30)
-  if (nrow(recent)) {
-    knitr::kable(recent, caption = "최근 30개 공시")
-  } else {
+  result <- tryCatch({
+    con <- pg_connect(dsn)
+    on.exit(DBI::dbDisconnect(con), add = TRUE)
+    dart_recent(con, limit = 30)
+  }, error = function(e) {
+    cat("PostgreSQL 연결 실패:", conditionMessage(e))
+    NULL
+  })
+  if (!is.null(result) && nrow(result)) {
+    knitr::kable(result, caption = "최근 30개 공시")
+  } else if (!is.null(result)) {
     cat("(공시 데이터 없음)")
   }
 } else {
