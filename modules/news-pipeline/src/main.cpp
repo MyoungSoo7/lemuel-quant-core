@@ -1,6 +1,7 @@
 #include <atomic>
 #include <chrono>
 #include <csignal>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <thread>
@@ -16,6 +17,10 @@ void on_sig(int) { g_run = false; }
 }  // namespace
 
 int main() {
+    // systemd 가 stdout 을 파이프로 가져갈 때 fully-buffered → 로그 늦게 / 안 나옴.
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
+    std::setvbuf(stderr, nullptr, _IONBF, 0);
+
     std::signal(SIGINT, on_sig);
     std::signal(SIGTERM, on_sig);
 
