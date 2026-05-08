@@ -53,9 +53,12 @@ int main() {
             board.ingest(sa);
         }
         const auto snap = board.snapshot(std::chrono::system_clock::now());
+        std::cout << "[cycle] articles=" << /* not tracked */ 0
+                  << " snapshot_size=" << snap.size() << std::endl;
         for (const auto& [ticker, sc] : snap) {
-            std::cout << "[news-score] " << ticker << " = " << sc << "\n";
+            std::cout << "[news-score] " << ticker << " = " << sc << std::endl;
         }
+        std::cout << "[sleep] 5min" << std::endl;
         std::this_thread::sleep_for(std::chrono::minutes(5));
     }
     return 0;
