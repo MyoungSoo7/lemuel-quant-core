@@ -26,6 +26,7 @@ int main() {
     if (const char* s = std::getenv("KIS_APP_SECRET")) opts.creds.app_secret = s;
     opts.creds.paper = (std::getenv("KIS_PAPER") != nullptr);
     opts.trade_symbols = {"005930", "000660"};   // 삼성전자, SK하이닉스
+    opts.book_symbols  = {"005930", "000660"};   // 호가도 같이 구독
 
     stock::KrxSession sess;
     stock::KisClient client(opts);

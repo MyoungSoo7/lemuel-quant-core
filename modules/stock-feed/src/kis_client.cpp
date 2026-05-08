@@ -200,11 +200,17 @@ void KisClient::run_loop() {
             for (const auto& s : opts_.book_symbols)  send_sub("H0STASP0", s);
 
             beast::flat_buffer buf;
+            int frame_n = 0;
             while (running_.load()) {
                 buf.clear();
                 ws.read(buf);
                 const auto sv = beast::buffers_to_string(buf.data());
                 if (sv.empty()) continue;
+                if (++frame_n <= 5) {
+                    std::cerr << "[kis] frame#" << frame_n << " ("
+                              << sv.size() << "B): "
+                              << sv.substr(0, 200) << std::endl;
+                }
                 // Real-time data frames are pipe-delimited:
                 //   "0|H0STCNT0|001|005930^HHMMSS^...^"
                 // JSON frames are PINGPONG / subscribe ack — ignore.
