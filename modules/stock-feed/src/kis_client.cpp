@@ -176,7 +176,9 @@ void KisClient::run_loop() {
                       << std::endl;
             const auto results = resolver.resolve(ws_host, ws_port);
             beast::get_lowest_layer(ws).connect(results);
-            ws.handshake(ws_host, "/tryitout/H0STCNT0");
+            // KIS WS path 는 단순 "/" — 과거 코드의 /tryitout/* 은 try-it-out
+            // 웹 UI 경로였고 실제 endpoint 가 아니었음
+            ws.handshake(ws_host, "/");
             std::cerr << "[kis] WS handshake OK, subscribing "
                       << opts_.trade_symbols.size() << " trade + "
                       << opts_.book_symbols.size() << " book symbols"
