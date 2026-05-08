@@ -1,6 +1,7 @@
 #include <atomic>
 #include <chrono>
 #include <csignal>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <thread>
@@ -61,6 +62,11 @@ dwh::Row trade_to_row(const std::string& channel, const std::string& payload) {
 }  // namespace
 
 int main() {
+    // systemd 가 stdout 을 파이프로 수집하면 stdio 가 fully-buffered → 로그 늦게 나옴.
+    // 줄 단위 flush 보장 (stock-feed 와 동일한 fix).
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
+    std::setvbuf(stderr, nullptr, _IONBF, 0);
+
     std::signal(SIGINT, on_sig);
     std::signal(SIGTERM, on_sig);
 
