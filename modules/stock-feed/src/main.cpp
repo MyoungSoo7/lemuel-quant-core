@@ -13,6 +13,11 @@ void on_sig(int) { g_stop = 1; }
 }  // namespace
 
 int main() {
+    // systemd 가 stdout/stderr 를 pipe 로 캡처하면 fully-buffered 가 되어
+    // std::cout 한 줄이 즉시 journal 에 안 보임 → unbuffered 강제.
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
+    std::setvbuf(stderr, nullptr, _IONBF, 0);
+
     std::signal(SIGINT, on_sig);
     std::signal(SIGTERM, on_sig);
 

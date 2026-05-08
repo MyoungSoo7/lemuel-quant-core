@@ -146,7 +146,15 @@ using tcp           = net::ip::tcp;
 void KisClient::run_loop() {
     while (running_.load()) {
         try {
+            std::cerr << "[kis] authenticating (paper="
+                      << (opts_.creds.paper ? "yes" : "no") << ", "
+                      << "appkey=" << opts_.creds.app_key.substr(0, 8) << "...)"
+                      << std::endl;
             const auto tokens = authenticate(opts_.creds);
+            std::cerr << "[kis] access_token len="
+                      << tokens.access_token.size()
+                      << "  approval_key len="
+                      << tokens.approval_key.size() << std::endl;
             if (tokens.approval_key.empty()) {
                 throw std::runtime_error(
                     "KIS approval_key 발급 실패 — 키/시크릿 또는 paper 모드 확인");
@@ -164,9 +172,15 @@ void KisClient::run_loop() {
             websocket::stream<beast::tcp_stream> ws{ioc};
             ws.read_message_max(256 * 1024);
 
+            std::cerr << "[kis] connecting WS " << ws_host << ":" << ws_port
+                      << std::endl;
             const auto results = resolver.resolve(ws_host, ws_port);
             beast::get_lowest_layer(ws).connect(results);
             ws.handshake(ws_host, "/tryitout/H0STCNT0");
+            std::cerr << "[kis] WS handshake OK, subscribing "
+                      << opts_.trade_symbols.size() << " trade + "
+                      << opts_.book_symbols.size() << " book symbols"
+                      << std::endl;
 
             // Subscribe to each symbol.
             auto send_sub = [&](const std::string& tr_id,
